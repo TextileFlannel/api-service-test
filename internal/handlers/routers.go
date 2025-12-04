@@ -27,7 +27,7 @@ func NewRouter(s *service.Service) http.Handler {
 		})
 	})
 
-	r.Route("/answer", func(r chi.Router) {
+	r.Route("/answers", func(r chi.Router) {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", answerHandler.Get)
 			r.Delete("/", answerHandler.Delete)
