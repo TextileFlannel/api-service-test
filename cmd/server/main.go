@@ -6,9 +6,13 @@ import (
 	"api-service-test/internal/repository"
 	"api-service-test/internal/service"
 	"api-service-test/migrations"
+	"context"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -25,7 +29,7 @@ func main() {
 		panic(fmt.Sprintf("failed to connect database: %v", err))
 	}
 
-	if err = migrations.RunMigrations(cfg.Postgres.DSN); err != nil {
+	if err := migrations.RunMigrations(cfg.Postgres.DSN); err != nil {
 		panic(fmt.Sprintf("failed to run migrations: %v", err))
 	}
 
@@ -38,8 +42,25 @@ func main() {
 		Handler: router,
 	}
 
-	if err = srv.ListenAndServe(); err != nil {
-		log.Fatal(err)
+	go func() {
+		fmt.Printf("Starting server on %s\n", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	fmt.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		panic(fmt.Sprintf("server forced to shutdown: %v", err))
 	}
 
+	fmt.Println("Server exited gracefully")
 }
