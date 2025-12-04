@@ -1,3 +1,6 @@
+tests:
+	go test .\internal\repository\
+
 docker-up:
 	docker-compose up --build
 
